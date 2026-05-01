@@ -3,10 +3,10 @@ import "./App.css";
 
 export default function App() {
   /*
-    修正版ポイント：
-    ✅ SVG の viewBox を固定し、内部要素だけをスケーリング
-    ✅ 文字・UI が引き伸ばされない
-    ✅ 声道長の違いは「声道矩形」と「波形の横スケール」だけで表現
+    追加内容：
+    ✅ 声帯側／口唇側を明示するラベルを追加
+    ✅ 節（ノード）・腹（アンチノード）を視覚的マーカーで表示
+    ✅ 既存の表示バランスは維持
   */
 
   const TRACT_PRESETS = {
@@ -22,23 +22,25 @@ export default function App() {
 
   const L = TRACT_PRESETS[tract].L;
   const L_REF = TRACT_PRESETS.male.L;
-  const scale = L / L_REF; // 相対長
+  const scale = L / L_REF;
 
-  // x は常に 0〜1
   const x = Array.from({ length: 300 }, (_, i) => i / 299);
 
-  // 共鳴モード（音圧）
   const n = mode;
   const pressure = x.map(xi => Math.sin((2 * n - 1) * Math.PI * xi / 2));
+
+  // 節・腹の位置（理論値）
+  const nodeX = 0; // 閉端＝常に節
+  const antinodeX = 1; // 開端＝常に腹
 
   const lambda = (4 * L) / (2 * n - 1);
   const freq = c / lambda;
 
   return (
     <div className="container">
-      <h1>声道共鳴と波長の関係</h1>
+      <h1 style={{ fontSize: "1.5rem" }}>声道共鳴と波長の関係</h1>
 
-      <div className="card">
+      <div className="card" style={{ fontSize: "0.9rem" }}>
         <label>声道モデル</label>
         <select value={tract} onChange={e => setTract(e.target.value)}>
           {Object.entries(TRACT_PRESETS).map(([k, v]) => (
@@ -47,47 +49,52 @@ export default function App() {
         </select>
 
         <div style={{ marginTop: "0.5rem" }}>
-          <button onClick={() => setMode(1)}>第1共鳴（1/4 波長）</button>
-          <button onClick={() => setMode(2)}>第2共鳴（3/4 波長）</button>
-          <button onClick={() => setMode(3)}>第3共鳴（5/4 波長）</button>
+          <button onClick={() => setMode(1)}>第1共鳴</button>
+          <button onClick={() => setMode(2)}>第2共鳴</button>
+          <button onClick={() => setMode(3)}>第3共鳴</button>
         </div>
       </div>
 
-      {/* ★ viewBox は固定（0〜1） */}
       <svg
         width="100%"
-        height="300"
-        viewBox="0 -1.2 1 2.4"
+        height="420"
+        viewBox="0 -1.4 1 2.8"
         preserveAspectRatio="xMidYMid meet"
         style={{ background: "#f9fafb" }}
       >
-        {/* 声道（横だけ scale） */}
-        <rect x={0} y={-1.2} width={scale} height={2.4}
+        {/* 声道 */}
+        <rect x={0} y={-1.4} width={scale} height={2.8}
           fill="#e0f2fe" stroke="#1f2937" strokeWidth={0.01} />
+        <line x1={0} x2={0} y1={-1.4} y2={1.4} stroke="#000" strokeWidth={0.01} />
+        <line x1={scale} x2={scale} y1={-1.4} y2={1.4} stroke="#000" strokeWidth={0.01} />
 
-        <line x1={0} x2={0} y1={-1.2} y2={1.2} stroke="#000" strokeWidth={0.01} />
-        <line x1={scale} x2={scale} y1={-1.2} y2={1.2} stroke="#000" strokeWidth={0.01} />
-
-        {/* 音圧波形 */}
+        {/* 音圧分布 */}
         {x.map((xi, i) => (
           <circle
             key={i}
             cx={xi * scale}
             cy={-pressure[i]}
-            r={0.01}
+            r={0.007}
             fill="seagreen"
           />
         ))}
 
-        {/* 注釈（常に同サイズ） */}
-        <text x={0.02} y={-1.05} fontSize={14}>声門（閉端・節）</text>
-        <text x={Math.max(scale - 0.28, 0.55)} y={-1.05} fontSize={14}>口唇（開端・腹）</text>
+        {/* 節（ノード）マーカー */}
+        <circle cx={nodeX} cy={0} r={0.03} fill="none" stroke="red" strokeWidth={0.01} />
+        <text x={0.01} y={0.2} fontSize={10} fill="red">節</text>
+
+        {/* 腹（アンチノード）マーカー */}
+        <circle cx={scale * antinodeX} cy={0} r={0.03} fill="none" stroke="blue" strokeWidth={0.01} />
+        <text x={Math.max(scale - 0.18, 0.6)} y={0.2} fontSize={10} fill="blue">腹</text>
+
+        {/* 端点ラベル */}
+        <text x={0.01} y={-1.25} fontSize={11}>声帯側（閉端）</text>
+        <text x={Math.max(scale - 0.28, 0.55)} y={-1.25} fontSize={11}>口唇側（開端）</text>
       </svg>
 
-      <p className="legend">
-        声道長 L = {Math.round(L * 100)} cm（基準比 {scale.toFixed(2)}）<br />
-        第 {mode} 共鳴 ： {(2 * mode - 1)}/4 波長<br />
-        λ ≈ {lambda.toFixed(2)} m, f ≈ {Math.round(freq)} Hz
+      <p className="legend" style={{ fontSize: "0.85rem" }}>
+        声道長 L = {Math.round(L * 100)} cm ／ 第 {mode} 共鳴 = {(2 * mode - 1)}/4 λ<br />
+        λ ≈ {lambda.toFixed(2)} m，f ≈ {Math.round(freq)} Hz
       </p>
     </div>
   );
