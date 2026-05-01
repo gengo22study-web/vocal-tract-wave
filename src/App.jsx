@@ -3,49 +3,47 @@ import "./App.css";
 
 export default function App() {
   /*
-    学生向け新規教材：
-    "母音ごとに共鳴周波数（フォルマント）がどう変わるか"を理解するための
-    超シンプル可視化。
-    ・時間変化する波は扱わない
-    ・声道は1次元・一様断面という前提
-    ・母音ごとに代表的な F1, F2 を比較表示
-    ・目的：共鳴周波数は声道形で決まる、という概念理解
+    学生向け教材（共鳴周波数と波形の対応）：
+    ・アニメーションなし
+    ・声門側：節（音圧0）
+    ・口唇側：腹（音圧最大）
+    ・母音ごとに代表的な共鳴周波数（F1, F2）
+    ・ボタンで「どのモードの共鳴形か」を切り替える
+    目的：共鳴周波数 ↔ 波の形（境界条件）の対応を視覚的に理解する
   */
 
-
-  // 声道長モデル（固定でもよいが比較用に残す）
+  // 声道長モデル
   const TRACT_PRESETS = {
     male: { label: "成人男性", L: 0.17 },
     female: { label: "成人女性", L: 0.14 },
     child: { label: "子ども", L: 0.11 }
   };
 
-  // 母音ごとの代表的フォルマント（概念用・Hz）
-  // ※ 実測の平均的値を丸めた教育用近似
+  // 母音ごとの代表的フォルマント（教育用近似）
   const VOWELS = {
-    a: { label: "/a/", F1: 700, F2: 1100 },
-    i: { label: "/i/", F1: 300, F2: 2300 },
-    u: { label: "/u/", F1: 350, F2: 900 }
+    a: { label: "/a/", F: [700, 1100] },
+    i: { label: "/i/", F: [300, 2300] },
+    u: { label: "/u/", F: [350, 900] }
   };
-
-
-  const c = 340; // 音速 [m/s]
 
   const [tract, setTract] = useState("male");
   const [vowel, setVowel] = useState("a");
+  const [mode, setMode] = useState(0); // 0 -> F1, 1 -> F2
 
 
   const L = TRACT_PRESETS[tract].L;
 
-  // 一様管モデルの基準フォルマント（比較用）
-  const tubeF1 = c / (4 * L);
-  const tubeF2 = (3 * c) / (4 * L);
-  const { F1, F2 } = VOWELS[vowel];
+  // 空間（声道内のみ）
+  const x = Array.from({ length: 300 }, (_, i) => i / 299);
+  // 閉端（声門）– 開端（口唇）管の共鳴モード（音圧）
+  // n=1 → F1, n=2 → F2
+  const n = mode + 1;
+  const pressure = x.map(xi => Math.sin((2 * n - 1) * Math.PI * xi / 2));
+
+
   return (
     <div className="container">
-      <h1>母音と声道共鳴周波数の関係</h1>
-
-
+      <h1>母音と声道共鳴モードの対応</h1>
       <div className="card">
         <label>声道モデル</label>
         <select value={tract} onChange={e => setTract(e.target.value)}>
@@ -55,41 +53,46 @@ export default function App() {
         </select>
 
         <label>母音</label>
-        <select value={vowel} onChange={e => setVowel(e.target.value)}>
+        <select value={vowel} onChange={e => { setVowel(e.target.value); setMode(0); }}>
           {Object.entries(VOWELS).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
           ))}
         </select>
-      </div>
-      <svg width="100%" height="260" viewBox="0 0 3000 260"
-        preserveAspectRatio="none" style={{ background: "#f9fafb" }}>
-        {/* 周波数軸 */}
-        <line x1={0} y1={200} x2={3000} y2={200} stroke="#111" />
-        <text x={10} y={230}>周波数 (Hz)</text>
-        {/* 目盛 */}
-        {[0,500,1000,1500,2000,2500,3000].map(f => (
-          <g key={f}>
-            <line x1={f} y1={195} x2={f} y2={205} stroke="#111" />
-            <text x={f + 5} y={220} fontSize={12}>{f}</text>
-          </g>
-        ))}
-        {/* 一様管フォルマント */}
-        <line x1={tubeF1} y1={60} x2={tubeF1} y2={200} stroke="#94a3b8" strokeWidth={4} />
-        <text x={tubeF1 + 5} y={55} fill="#475569">管F1</text>
-        <line x1={tubeF2} y1={60} x2={tubeF2} y2={200} stroke="#94a3b8" strokeWidth={4} />
-        <text x={tubeF2 + 5} y={55} fill="#475569">管F2</text>
-        {/* 母音フォルマント */}
-        <line x1={F1} y1={100} x2={F1} y2={200} stroke="#16a34a" strokeWidth={6} />
-        <text x={F1 + 5} y={95} fill="#166534">F1</text>
 
-        <line x1={F2} y1={100} x2={F2} y2={200} stroke="#2563eb" strokeWidth={6} />
-        <text x={F2 + 5} y={95} fill="#1e3a8a">F2</text>
+
+        <div style={{ marginTop: "0.5rem" }}>
+          <button onClick={() => setMode(0)}>F1 モード</button>
+          <button onClick={() => setMode(1)}>F2 モード</button>
+        </div>
+      </div>
+
+
+      <svg width="100%" height="300"
+        viewBox="0 -1.2 1 2.4" preserveAspectRatio="none"
+        style={{ background: "#f9fafb" }}>
+
+
+        {/* 声道 */}
+        <rect x={0} y={-1.2} width={1} height={2.4}
+          fill="#e0f2fe" stroke="#1f2937" strokeWidth={0.01} />
+        <line x1={0} x2={0} y1={-1.2} y2={1.2} stroke="#000" strokeWidth={0.01} />
+        <line x1={1} x2={1} y1={-1.2} y2={1.2} stroke="#000" strokeWidth={0.01} />
+
+
+        {/* 音圧分布 */}
+        {x.map((xi, i) => (
+          <circle key={i} cx={xi} cy={-pressure[i]} r={0.01} fill="seagreen" />
+        ))}
+
+        {/* 注釈 */}
+        <text x={0.02} y={-1.05} fontSize={0.12}>声門（閉端・節）</text>
+        <text x={0.7} y={-1.05} fontSize={0.12}>口唇（開端・腹）</text>
       </svg>
 
       <p className="legend">
-        緑: 母音の第1フォルマント (F1) / 青: 第2フォルマント (F2)<br />
-        灰: 一様な管としての共鳴周波数（比較用）<br />
-        ※ 共鳴周波数は声道の形（母音）で変わる
+        表示中のモード：{VOWELS[vowel].label} の F{mode + 1}（約 {VOWELS[vowel].F[mode]} Hz）<br />
+        声門側は音圧の節、口唇側は音圧の腹<br />
+        ※ アニメーションなし：共鳴周波数と波形の対応を示す
       </p>
     </div>
   );
