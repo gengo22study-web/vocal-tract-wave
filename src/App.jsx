@@ -1,15 +1,18 @@
-
-
 import { useState, useEffect } from "react";
 import "./App.css";
+
+
 export default function App() {
   const L = 0.17; // 声道長 [m]
-  const c = 340; // 音速 [m/s]
+  const c = 340;  // 音速 [m/s]
+
 
   const [freq, setFreq] = useState(500);
   const [reflection, setReflection] = useState(0.8);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+
+
   const omega = 2 * Math.PI * freq;
   const k = omega / c;
 
@@ -22,22 +25,32 @@ export default function App() {
     return () => clearInterval(id);
   }, [playing]);
 
+  // 横方向を広く可視化（声道 + 口外を余裕をもって表示）
+  const X_MAX = 1.6 * L;
+  const x = Array.from({ length: 360 }, (_, i) => (i / 359) * X_MAX);
+  /*
+    声門側の注意：
+    声門は「音圧源」ではなく「体積速度源」に近い。
+    教育的配慮として、x=0 近傍の音圧振幅をテーパで抑制し、
+    声帯が上下に大きく振動しているように“見えない”表示にする。
+  */
+  const sourceTaper = xi => 1 - Math.exp(-xi / (0.02 * L));
+  const incidentRaw = x.map(xi =>
+    xi <= L ? sourceTaper(xi) * Math.sin(omega * time - k * xi) : null
+  );
+  const reflectedRaw = x.map(xi =>
+    xi <= L ? sourceTaper(xi) * reflection * Math.sin(omega * time + k * xi) : null
+  );
 
-  const x = Array.from({ length: 300 }, (_, i) => (i / 299) * L * 1.3);
 
-  const incidentRaw = x.map(xi => xi <= L ? Math.sin(omega * time - k * xi) : null);
-  const reflectedRaw = x.map(xi => xi <= L ? reflection * Math.sin(omega * time + k * xi) : null);
   const totalRaw = x.map((_, i) => (incidentRaw[i] ?? 0) + (reflectedRaw[i] ?? 0));
   const transmittedRaw = x.map(xi => xi > L ? 0.5 * Math.sin(omega * time - k * xi) : null);
-
 
   // 定常波がはみ出さないよう正規化
   const maxAmp = Math.max(
     ...totalRaw.filter(v => v !== null).map(v => Math.abs(v)),
     1
   );
-
-
   const norm = v => (v === null ? null : v / maxAmp);
 
 
@@ -59,25 +72,25 @@ export default function App() {
         <label>反射係数: {reflection.toFixed(2)}</label>
         <input type="range" min="0" max="1" step="0.05"
           value={reflection} onChange={e => setReflection(+e.target.value)} />
+
+
         <label>時間</label>
         <input type="range" min="0" max="0.02" step="0.0002"
           value={time} onChange={e => setTime(+e.target.value)} />
-
 
         <button onClick={() => setPlaying(p => !p)}>
           {playing ? "停止" : "自動再生"}
         </button>
       </div>
 
-
       <svg
         width="100%"
-        height="260"
-        viewBox="0 -1.2 1.3 2.4"
+        height="300"
+        viewBox={`0 -1.2 ${X_MAX} 2.4`}
         preserveAspectRatio="none"
         style={{ background: "#f9fafb", overflow: "visible" }}
       >
-        {/* 声道管の範囲（背景が暗くても見えるよう明瞭化） */}
+        {/* 声道管の範囲 */}
         <rect
           x={0}
           y={-1.2}
@@ -88,29 +101,10 @@ export default function App() {
           strokeWidth={0.004}
         />
 
-
-        {/* 声門位置（左端） */}
-        <line
-          x1={0}
-          x2={0}
-          y1={-1.2}
-          y2={1.2}
-          stroke="#1f2937"
-          strokeWidth={0.004}
-        />
-
-
-        {/* 口唇位置（明示的に強調） */}
-        <line
-          x1={L}
-          x2={L}
-          y1={-1.2}
-          y2={1.2}
-          stroke="#000000"
-          strokeWidth={0.006}
-        />
-
-
+        {/* 声門位置 */}
+        <line x1={0} x2={0} y1={-1.2} y2={1.2} stroke="#1f2937" strokeWidth={0.004} />
+        {/* 口唇位置 */}
+        <line x1={L} x2={L} y1={-1.2} y2={1.2} stroke="#000" strokeWidth={0.006} />
         {x.map((xi, i) => incident[i] !== null && (
           <circle key={"i" + i} cx={xi} cy={-incident[i]} r={0.004} fill="blue" />
         ))}
@@ -126,7 +120,8 @@ export default function App() {
       </svg>
 
       <p className="legend">
-        青:進行波 / 桃:反射波 / 緑:定常波 / 紫:口外透過波（自動正規化表示）
+        青:進行波 / 桃:反射波 / 緑:定常波 / 紫:口外透過波<br />
+        ※ 声門は体積速度源として表現（音圧振幅を抑制表示）
       </p>
     </div>
   );
