@@ -75,27 +75,42 @@ export default function App() {
         height="260"
         viewBox="0 -1.2 1.3 2.4"
         preserveAspectRatio="none"
-        style={{ overflow: "visible" }}
+        style={{ background: "#f9fafb", overflow: "visible" }}
       >
-        {/* 声道範囲の明示（管全体が見えるよう補助線） */}
+        {/* 声道管の範囲（背景が暗くても見えるよう明瞭化） */}
         <rect
           x={0}
           y={-1.2}
           width={L}
           height={2.4}
-          fill="none"
-          stroke="#999"
-          strokeDasharray="3"
+          fill="#f0f9ff"
+          stroke="#1f2937"
+          strokeWidth={0.004}
         />
-        {/* 口唇位置 */}
+
+
+        {/* 声門位置（左端） */}
+        <line
+          x1={0}
+          x2={0}
+          y1={-1.2}
+          y2={1.2}
+          stroke="#1f2937"
+          strokeWidth={0.004}
+        />
+
+
+        {/* 口唇位置（明示的に強調） */}
         <line
           x1={L}
           x2={L}
           y1={-1.2}
           y2={1.2}
-          stroke="black"
-          strokeDasharray="4"
+          stroke="#000000"
+          strokeWidth={0.006}
         />
+
+
         {x.map((xi, i) => incident[i] !== null && (
           <circle key={"i" + i} cx={xi} cy={-incident[i]} r={0.004} fill="blue" />
         ))}
